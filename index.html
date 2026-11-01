@@ -1,0 +1,881 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Налоговый калькулятор бизнес-моделей</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+
+    <style>
+        :root {
+            --bg-dark: #070720;
+            --bg-gradient: linear-gradient(135deg, #0f0c29, #302b63, #24243e);
+            
+            --glass-bg: rgba(255, 255, 255, 0.05);
+            --glass-bg-hover: rgba(255, 255, 255, 0.1);
+            --glass-border: rgba(255, 255, 255, 0.15);
+            --glass-blur: blur(12px);
+            --glass-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+            
+            --neon-blue: #00f3ff;
+            --neon-glow: 0 0 10px rgba(0, 243, 255, 0.6), 0 0 20px rgba(0, 243, 255, 0.4);
+            
+            --chart-prof: #00f3ff;
+            --chart-exp: #ffffff;
+            --chart-tax: #3a86ff;
+            
+            --text-main: #ffffff;
+            --text-muted: rgba(255, 255, 255, 0.7);
+            
+            --font-heading: 'JetBrains Mono', monospace;
+            --font-body: 'Roboto', sans-serif;
+            --transition: all 0.3s ease;
+        }
+
+        body {
+            font-family: var(--font-body);
+            background: var(--bg-gradient);
+            background-attachment: fixed;
+            color: var(--text-main);
+            min-height: 100vh;
+            position: relative;
+        }
+
+        /* Ambient Background Blobs */
+        body::before, body::after {
+            content: '';
+            position: fixed;
+            border-radius: 50%;
+            filter: blur(80px);
+            z-index: -1;
+            animation: float 10s infinite alternate ease-in-out;
+            pointer-events: none;
+        }
+        body::before {
+            width: 400px; height: 400px;
+            background: rgba(0, 243, 255, 0.12);
+            top: 10%; left: -100px;
+        }
+        body::after {
+            width: 500px; height: 500px;
+            background: rgba(138, 43, 226, 0.12);
+            bottom: 10%; right: -100px;
+            animation-delay: -5s;
+        }
+
+        @keyframes float {
+            0% { transform: translateY(0) scale(1); }
+            100% { transform: translateY(30px) scale(1.1); }
+        }
+
+        h1, h2, h3, h4, h5, h6, .font-heading {
+            font-family: var(--font-heading);
+            font-weight: 700;
+        }
+
+        .glass-panel {
+            background: var(--glass-bg);
+            backdrop-filter: var(--glass-blur);
+            -webkit-backdrop-filter: var(--glass-blur);
+            border: 1px solid var(--glass-border);
+            border-radius: 16px;
+            box-shadow: var(--glass-shadow);
+        }
+
+        .form-control {
+            width: 100%;
+            padding: 10px 14px;
+            background: rgba(0, 0, 0, 0.2);
+            border: 1px solid var(--glass-border);
+            border-radius: 8px;
+            color: var(--text-main);
+            font-family: var(--font-body);
+            font-size: 1rem;
+            transition: var(--transition);
+            outline: none;
+        }
+        .form-control:focus {
+            border-color: var(--neon-blue);
+            box-shadow: var(--neon-glow);
+            background: rgba(0, 0, 0, 0.4);
+        }
+        select.form-control option {
+            background-color: var(--bg-dark);
+            color: white;
+        }
+
+        /* Ползунок */
+        .range-slider {
+            -webkit-appearance: none;
+            width: 100%;
+            height: 6px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 3px;
+            outline: none;
+            margin: 15px 0;
+        }
+        .range-slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: var(--neon-blue);
+            cursor: pointer;
+            box-shadow: var(--neon-glow);
+            transition: transform 0.1s;
+        }
+        .range-slider::-webkit-slider-thumb:hover {
+            transform: scale(1.2);
+        }
+
+        /* Checkbox */
+        .control-label {
+            display: flex;
+            align-items: center;
+            cursor: pointer;
+            position: relative;
+            padding-left: 32px;
+            font-size: 0.9rem;
+            user-select: none;
+        }
+        .control-label input {
+            position: absolute; opacity: 0; cursor: pointer; height: 0; width: 0;
+        }
+        .checkmark {
+            position: absolute; top: 50%; left: 0; transform: translateY(-50%);
+            height: 22px; width: 22px;
+            background-color: rgba(0,0,0,0.3);
+            border: 1px solid var(--glass-border);
+            border-radius: 4px;
+            transition: var(--transition);
+        }
+        .control-label input:checked ~ .checkmark {
+            background-color: rgba(0, 243, 255, 0.1);
+            border-color: var(--neon-blue);
+            box-shadow: var(--neon-glow);
+        }
+        .checkmark:after {
+            content: ""; position: absolute; display: none;
+            left: 7px; top: 3px; width: 5px; height: 10px;
+            border: solid var(--text-main); border-width: 0 2px 2px 0;
+            transform: rotate(45deg);
+        }
+        .control-label input:checked ~ .checkmark:after { display: block; }
+
+        .btn {
+            display: inline-flex;
+            align-items: center; justify-content: center;
+            padding: 10px 20px;
+            font-family: var(--font-heading); font-weight: 700; font-size: 0.9rem;
+            color: var(--text-main);
+            background: var(--glass-bg);
+            border: 1px solid var(--glass-border);
+            border-radius: 8px; cursor: pointer;
+            transition: var(--transition);
+            backdrop-filter: var(--glass-blur);
+        }
+        .btn:hover {
+            background: var(--glass-bg-hover);
+            border-color: var(--neon-blue); box-shadow: var(--neon-glow);
+            color: var(--neon-blue); transform: translateY(-2px);
+        }
+        .btn-primary {
+            background: rgba(0, 243, 255, 0.1); border-color: rgba(0, 243, 255, 0.3);
+        }
+        .text-neon { color: var(--neon-blue); text-shadow: var(--neon-glow); }
+        .chart-circle { transition: stroke-dasharray 0.8s ease-out, stroke-dashoffset 0.8s ease-out; }
+    </style>
+</head>
+<body class="p-4 md:p-8">
+
+    <div class="max-w-7xl mx-auto space-y-8 relative z-10">
+        
+        <!-- Header -->
+        <div class="text-center space-y-3 pt-6 pb-4">
+            <h1 class="text-3xl md:text-5xl text-neon">Налоговый калькулятор бизнес-моделей</h1>
+            <p class="text-sm font-heading text-[var(--text-muted)]">Анализ рентабельности и налоговой нагрузки арендного бизнеса</p>
+        </div>
+
+        <!-- ВВОД ДАННЫХ -->
+        <div class="glass-panel p-6 md:p-8">
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+                <div>
+                    <label class="block text-sm mb-2 font-heading opacity-80">Общая выручка в месяц (руб)</label>
+                    <input type="text" id="income" class="form-control text-xl font-bold font-heading" value="3 000 000">
+                </div>
+                <div class="p-5 rounded-xl bg-[rgba(0,0,0,0.2)] border border-[var(--glass-border)]">
+                    <div class="flex justify-between text-sm font-medium mb-1 font-heading">
+                        <span>Доля ИП: <span id="ipShareLabel" class="text-neon text-lg">60%</span></span>
+                        <span>Доля ООО: <span id="oooShareLabel" class="text-neon text-lg">40%</span></span>
+                    </div>
+                    <input type="range" id="ipShare" min="0" max="100" step="10" value="60" class="range-slider">
+                    <div class="flex justify-between text-[10px] opacity-50 px-1 mt-1 font-heading">
+                        <span>0</span><span>10</span><span>20</span><span>30</span><span>40</span><span>50</span><span>60</span><span>70</span><span>80</span><span>90</span><span>100</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Раздельные расходы -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
+                <!-- Расходы ИП -->
+                <div class="space-y-4 p-5 rounded-xl bg-[rgba(0,0,0,0.1)] border border-[var(--glass-border)]">
+                    <h4 class="text-neon font-heading text-lg border-b border-[var(--glass-border)] pb-2 text-center">Расходы ИП</h4>
+                    <div>
+                        <label class="block text-sm mb-1 opacity-80">Операционные расходы ИП (мес)</label>
+                        <input type="text" id="ip_exp" class="form-control" value="0">
+                    </div>
+                    <div>
+                        <label class="block text-sm mb-1 opacity-80">ФОТ ИП (мес)</label>
+                        <input type="text" id="ip_fot" class="form-control" value="0">
+                    </div>
+                </div>
+                
+                <!-- Расходы ООО -->
+                <div class="space-y-4 p-5 rounded-xl bg-[rgba(0,0,0,0.1)] border border-[var(--glass-border)]">
+                    <h4 class="text-neon font-heading text-lg border-b border-[var(--glass-border)] pb-2 text-center">Расходы ООО</h4>
+                    <div>
+                        <label class="block text-sm mb-1 opacity-80">Операционные расходы ООО (мес)</label>
+                        <input type="text" id="ooo_exp" class="form-control" value="500 000">
+                    </div>
+                    <div>
+                        <label class="block text-sm mb-1 opacity-80">ФОТ ООО (мес)</label>
+                        <input type="text" id="ooo_fot" class="form-control" value="200 000">
+                    </div>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 pt-6 border-t border-[var(--glass-border)]">
+                <div>
+                    <label class="block text-sm mb-1 opacity-80">СНО для ИП (Вариант 1)</label>
+                    <select id="sys_ip" class="form-control">
+                        <option value="usn6">УСН 6% (Доходы)</option>
+                        <option value="usn15">УСН 15% (Доходы - Расходы)</option>
+                        <option value="osno">ОСНО (НДФЛ)</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm mb-1 opacity-80">СНО для ООО (Вариант 1)</label>
+                    <select id="sys_ooo_1" class="form-control">
+                        <option value="usn6">УСН 6% (Доходы)</option>
+                        <option value="usn15">УСН 15% (Доходы - Расходы)</option>
+                        <option value="osno">ОСНО (Прибыль)</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm mb-1 opacity-80">СНО для ООО (Вариант 2 - 100%)</label>
+                    <select id="sys_ooo_2" class="form-control">
+                        <option value="usn6">УСН 6% (Доходы)</option>
+                        <option value="usn15">УСН 15% (Доходы - Расходы)</option>
+                        <option value="osno">ОСНО (Прибыль)</option>
+                    </select>
+                </div>
+            </div>
+            
+            <div class="flex flex-wrap items-center justify-between gap-4 mt-6 pt-6 border-t border-[var(--glass-border)]">
+                <label class="control-label">
+                    <input type="checkbox" id="calcDividends" checked>
+                    <span class="checkmark"></span>
+                    Учесть НДФЛ на вывод дивидендов из ООО
+                </label>
+                
+                <div class="flex gap-3">
+                    <button onclick="shareLink()" class="btn btn-primary">
+                        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"></path></svg>
+                        Поделиться
+                    </button>
+                    <button onclick="downloadExcel()" class="btn btn-primary">
+                        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                        Скачать в Excel
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- ОСНОВНЫЕ МОДЕЛИ -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <!-- ВАРИАНТ 1 -->
+            <div class="lg:col-span-2 glass-panel p-6 flex flex-col h-full">
+                <div class="text-center mb-6">
+                    <h2 class="text-xl font-heading text-white">Модель 1: Распределение <span id="v1_ip_pct" class="text-neon">60</span> / <span id="v1_ooo_pct" class="text-neon">40</span></h2>
+                </div>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 flex-grow">
+                    <!-- Колонка ИП -->
+                    <div class="flex flex-col h-full">
+                        <h3 class="text-lg text-center pb-2 border-b border-[var(--glass-border)] font-heading text-white">ИП (<span id="v1_ip_pct_title">60</span>%)</h3>
+                        <div id="ip_results" class="text-sm pt-2 flex-grow flex flex-col"></div>
+                    </div>
+                    <!-- Колонка ООО -->
+                    <div class="border-t md:border-t-0 md:border-l border-[var(--glass-border)] pt-4 md:pt-0 md:pl-6 flex flex-col h-full">
+                        <h3 class="text-lg text-center pb-2 border-b border-[var(--glass-border)] font-heading text-white">ООО (<span id="v1_ooo_pct_title">40</span>%)</h3>
+                        <div id="ooo_results" class="text-sm pt-2 flex-grow flex flex-col"></div>
+                    </div>
+                </div>
+
+                <div class="mt-6 pt-4 border-t border-[var(--glass-border)] text-center bg-[rgba(0,0,0,0.2)] rounded-lg p-4">
+                    <div class="text-sm uppercase tracking-wider mb-1 font-heading opacity-70">Итоговая чистая прибыль (Вар. 1)</div>
+                    <div id="v1_total_profit" class="text-2xl font-heading text-neon">0 ₽ / год</div>
+                </div>
+            </div>
+
+            <!-- ВАРИАНТ 2 -->
+            <div class="glass-panel p-6 flex flex-col h-full">
+                <div class="text-center mb-6">
+                    <h2 class="text-xl font-heading text-white">Модель 2: 100% ООО</h2>
+                </div>
+                <div class="flex-grow flex flex-col">
+                    <h3 class="text-lg text-center pb-2 border-b border-[var(--glass-border)] font-heading text-white">ООО (100%)</h3>
+                    <div id="ooo2_results" class="text-sm pt-2 flex-grow flex flex-col"></div>
+                </div>
+                <div class="mt-6 pt-4 border-t border-[var(--glass-border)] text-center bg-[rgba(0,0,0,0.2)] rounded-lg p-4">
+                    <div class="text-sm uppercase tracking-wider mb-1 font-heading opacity-70">Итоговая чистая прибыль (Вар. 2)</div>
+                    <div id="v2_total_profit" class="text-2xl font-heading text-neon">0 ₽ / год</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- АЛЬТЕРНАТИВНЫЙ СЦЕНАРИЙ АУСН -->
+        <div class="glass-panel p-6 md:p-8 mt-8 border-t-2 border-[var(--neon-blue)] bg-gradient-to-b from-[rgba(0,243,255,0.05)] to-transparent">
+            <div class="text-center mb-8">
+                <h2 class="text-2xl font-heading text-white mb-2">Альтернативный сценарий: АУСН</h2>
+                <p class="text-sm opacity-80">ИП (АУСН Доходы 8%), ООО (АУСН Доходы-Расходы 20%). Налог с ФОТ = 0. Травматизм ООО = 2 959 ₽ в год.</p>
+            </div>
+            
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <!-- АУСН Модель 1 -->
+                <div class="lg:col-span-2 bg-[rgba(0,0,0,0.3)] rounded-2xl p-6 border border-[var(--glass-border)] flex flex-col h-full">
+                    <div class="text-center mb-6">
+                        <h3 class="text-lg font-heading text-white">Модель 1: АУСН (<span class="ausn_ip_share text-neon">60</span> / <span class="ausn_ooo_share text-neon">40</span>)</h3>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 flex-grow">
+                        <div class="flex flex-col h-full">
+                            <h4 class="font-heading text-center pb-2 border-b border-[var(--glass-border)] text-white">ИП (8%)</h4>
+                            <div id="ausn_ip_results" class="text-sm pt-2 flex-grow flex flex-col"></div>
+                        </div>
+                        <div class="border-t md:border-t-0 md:border-l border-[var(--glass-border)] pt-4 md:pt-0 md:pl-6 flex flex-col h-full">
+                            <h4 class="font-heading text-center pb-2 border-b border-[var(--glass-border)] text-white">ООО (20%)</h4>
+                            <div id="ausn_ooo_results" class="text-sm pt-2 flex-grow flex flex-col"></div>
+                        </div>
+                    </div>
+                    <div class="mt-6 p-4 border border-[var(--glass-border)] text-center bg-[rgba(255,255,255,0.05)] rounded-xl">
+                        <div class="text-sm uppercase font-heading opacity-70 mb-1">Итоговая чистая прибыль (АУСН Вар. 1)</div>
+                        <div id="ausn_v1_total_profit" class="text-2xl font-heading text-neon">0 ₽ / год</div>
+                    </div>
+                </div>
+
+                <!-- АУСН Модель 2 -->
+                <div class="bg-[rgba(0,0,0,0.3)] rounded-2xl p-6 border border-[var(--glass-border)] flex flex-col h-full">
+                    <div class="text-center mb-6">
+                        <h3 class="text-lg font-heading text-white">Модель 2: АУСН (100% ООО)</h3>
+                    </div>
+                    <div class="flex-grow flex flex-col h-full">
+                        <h4 class="font-heading text-center pb-2 border-b border-[var(--glass-border)] text-white">ООО (20%)</h4>
+                        <div id="ausn_ooo2_results" class="text-sm pt-2 flex-grow flex flex-col"></div>
+                    </div>
+                    <div class="mt-6 p-4 border border-[var(--glass-border)] text-center bg-[rgba(255,255,255,0.05)] rounded-xl">
+                        <div class="text-sm uppercase font-heading opacity-70 mb-1">Итоговая чистая прибыль (АУСН Вар. 2)</div>
+                        <div id="ausn_v2_total_profit" class="text-2xl font-heading text-neon">0 ₽ / год</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ОПТИМАЛЬНАЯ БИЗНЕС-МОДЕЛЬ (Вывод) -->
+        <div class="glass-panel p-6 md:p-10 text-center mt-8 bg-gradient-to-t from-[rgba(0,243,255,0.05)] to-transparent" id="optimal_banner">
+            <h2 class="text-2xl md:text-3xl font-heading text-white mb-2">Оптимальная бизнес-модель</h2>
+            <div id="optimal_text" class="text-lg mt-4"></div>
+        </div>
+
+    </div>
+
+<script>
+    window.lastCalcData = null;
+    const fmt = new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 0 });
+    
+    function parseNum(val) {
+        if (!val) return 0;
+        let s = val.toString();
+        // G01: Отклоняем любой ввод с недопустимыми символами (буквы, мат. знаки, юникодные минусы и т.д.)
+        // Разрешены только цифры, пробелы, точка и запятая.
+        if (/[^\d.,\s]/.test(s)) return 0;
+        // Игнорируем копейки после точки/запятой и удаляем всё кроме цифр
+        let str = s.split(/[.,]/)[0].replace(/[^\d]/g, '');
+        return parseInt(str, 10) || 0;
+    }
+
+    document.querySelectorAll('input[type="text"]').forEach(input => {
+        input.addEventListener('input', function(e) {
+            let val = parseNum(e.target.value);
+            e.target.value = val > 0 ? fmt.format(val) : (val === 0 && e.target.value !== '' ? '0' : '');
+            calculate();
+        });
+    });
+
+    function getVal(id) { return parseNum(document.getElementById(id).value); }
+
+    document.getElementById('ipShare').addEventListener('input', function() {
+        updateShareLabels();
+        calculate();
+    });
+
+    function updateShareLabels() {
+        const ipShare = parseInt(document.getElementById('ipShare').value);
+        const oooShare = 100 - ipShare;
+        document.getElementById('ipShareLabel').innerText = ipShare + '%';
+        document.getElementById('oooShareLabel').innerText = oooShare + '%';
+        document.getElementById('v1_ip_pct').innerText = ipShare;
+        document.getElementById('v1_ooo_pct').innerText = oooShare;
+        document.getElementById('v1_ip_pct_title').innerText = ipShare;
+        document.getElementById('v1_ooo_pct_title').innerText = oooShare;
+        
+        document.querySelectorAll('.ausn_ip_share').forEach(el => el.innerText = ipShare);
+        document.querySelectorAll('.ausn_ooo_share').forEach(el => el.innerText = oooShare);
+    }
+
+    const selects = ['sys_ip', 'sys_ooo_1', 'sys_ooo_2', 'calcDividends'];
+    selects.forEach(id => document.getElementById(id).addEventListener('change', calculate));
+
+    function shareLink() {
+        const url = window.location.href;
+        try {
+            navigator.clipboard.writeText(url).then(() => alert('Ссылка скопирована!'));
+        } catch (err) {
+            prompt("Скопируйте ссылку:", url);
+        }
+    }
+
+    function calcEntity(yearlyInc, yearlyExp, yearlyFot, sysType, isIP, withDividends) {
+        let isIncomeOnly = (sysType === 'usn6' || sysType === 'ausn8');
+        let isAusn = (sysType === 'ausn8' || sysType === 'ausn20');
+        let isOsno = (sysType === 'osno');
+
+        // R01: ФОТ — это уже gross зарплата (НДФЛ сотрудников внутри неё)
+        let yearlyGrossZp = yearlyFot;
+        let yearlyVznosy = isAusn ? 0 : (yearlyGrossZp * 0.302);
+        let yearlyFotTaxes = yearlyVznosy;
+        
+        // R07: Травматизм АУСН (ИП платит только если есть работники)
+        if (isAusn && (!isIP || yearlyGrossZp > 0)) {
+            yearlyFotTaxes += 2959; 
+            yearlyVznosy += 2959;
+        }
+
+        // R05, R06, T01: Минимальная база директора ООО (доначисляем только взносы 30% до МРОТ, без травматизма и НДФЛ)
+        if (!isIP && !isAusn) {
+            let M = 27093;
+            let minBase = M * 12;
+            if (yearlyGrossZp < minBase) {
+                let diffBase = minBase - yearlyGrossZp;
+                yearlyVznosy += diffBase * 0.30;
+                yearlyFotTaxes += diffBase * 0.30;
+            }
+        }
+
+        let yearlyNds = 0;
+        let baseForTax = yearlyInc;
+
+        // R02, G02: НДС для УСН 5% и ОСНО 22% с поквартальным округлением
+        if (isOsno) {
+            baseForTax = yearlyInc / 1.22;
+            let monthlyNds = (yearlyInc / 12) - (yearlyInc / 12 / 1.22);
+            monthlyNds = Math.round(monthlyNds * 100) / 100; // G02: Точность до копеек в счете-фактуре
+            let quarterNds = Math.round(monthlyNds * 3);
+            yearlyNds = quarterNds * 4;
+        } else if (sysType.startsWith('usn')) {
+            let acc = 0;
+            let vatStatus = 0;
+            baseForTax = 0;
+            let quarterNdsAcc = 0;
+            for (let i = 0; i < 12; i++) {
+                let mInc = yearlyInc / 12;
+                if (vatStatus === 1) {
+                    let nds = mInc * 5 / 105;
+                    nds = Math.round(nds * 100) / 100; // G02: Точность до копеек в счете-фактуре
+                    quarterNdsAcc += nds;
+                    let incNoVat = mInc - nds;
+                    baseForTax += incNoVat;
+                    acc += incNoVat;
+                } else {
+                    baseForTax += mInc;
+                    acc += mInc;
+                    if (acc > 20000000) vatStatus = 1;
+                }
+                
+                // Округление НДС за каждый квартал
+                if ((i + 1) % 3 === 0) {
+                    yearlyNds += Math.round(quarterNdsAcc);
+                    quarterNdsAcc = 0;
+                }
+            }
+        }
+
+        let fixedIpVznosy = 0;
+        let ip1Percent = 0;
+        let totalIpVznosyForDeduction = 0;
+
+        if (isIP && !isAusn) {
+            fixedIpVznosy = 61154;
+            let baseFor1Percent = baseForTax;
+            if (sysType === 'usn15' || isOsno) {
+                 baseFor1Percent = baseForTax - yearlyExp - yearlyGrossZp - yearlyVznosy;
+            }
+            if (baseFor1Percent > 300000) {
+                ip1Percent = (baseFor1Percent - 300000) * 0.01;
+                if (ip1Percent > 342923) ip1Percent = 342923;
+            }
+            totalIpVznosyForDeduction = fixedIpVznosy + ip1Percent;
+        }
+
+        let mainTax = 0;
+        let allowedExpenses = yearlyExp + yearlyGrossZp + yearlyVznosy + totalIpVznosyForDeduction;
+
+        if (sysType === 'usn6') {
+            let initialTax = baseForTax * 0.06;
+            let deduction = 0;
+            // R03: Если ИП без работников - вычет до 100%, с работниками или ООО - до 50%
+            if (isIP && yearlyGrossZp === 0) {
+                deduction = totalIpVznosyForDeduction;
+            } else {
+                deduction = Math.min(yearlyVznosy + totalIpVznosyForDeduction, initialTax * 0.5);
+            }
+            mainTax = Math.max(0, initialTax - deduction);
+        } else if (sysType === 'usn15') {
+            let profit = baseForTax - allowedExpenses;
+            mainTax = profit > 0 ? profit * 0.15 : 0;
+            if (mainTax < baseForTax * 0.01) mainTax = baseForTax * 0.01;
+        } else if (sysType === 'ausn8') {
+            // R08: Помесячное округление для АУСН
+            for (let i = 0; i < 12; i++) {
+                mainTax += Math.round((baseForTax / 12) * 0.08);
+            }
+        } else if (sysType === 'ausn20') {
+            // R08: Помесячное округление для АУСН
+            for (let i = 0; i < 12; i++) {
+                let mInc = baseForTax / 12;
+                let mExp = allowedExpenses / 12;
+                let mProf = mInc - mExp;
+                let mTax = mProf > 0 ? mProf * 0.20 : 0;
+                if (mTax < mInc * 0.03) mTax = mInc * 0.03;
+                mainTax += Math.round(mTax);
+            }
+        } else if (isOsno) {
+            let profit = baseForTax - allowedExpenses;
+            if (profit > 0) {
+                if (isIP) {
+                    // R04: Полноценная прогрессивная шкала НДФЛ для ИП на ОСНО
+                    if (profit <= 2400000) mainTax = profit * 0.13;
+                    else if (profit <= 5000000) mainTax = 312000 + (profit - 2400000) * 0.15;
+                    else if (profit <= 20000000) mainTax = 702000 + (profit - 5000000) * 0.18;
+                    else if (profit <= 50000000) mainTax = 3402000 + (profit - 20000000) * 0.20;
+                    else mainTax = 9402000 + (profit - 50000000) * 0.22;
+                } else {
+                    // G03: Раздельное округление налоговых баз 8% и 17% по бюджетам
+                    let fedTax = Math.round(profit * 0.08);
+                    let regTax = Math.round(profit * 0.17);
+                    mainTax = fedTax + regTax;
+                }
+            }
+        }
+
+        // T03: Округляем налоги до целых рублей перед формированием баланса, чтобы устранить копеечные расхождения
+        mainTax = Math.round(mainTax);
+        yearlyNds = Math.round(yearlyNds);
+
+        let totalTaxesBeforeDivs = mainTax + yearlyNds + yearlyFotTaxes + totalIpVznosyForDeduction;
+        let preDivProfit = yearlyInc - yearlyExp - yearlyGrossZp - totalTaxesBeforeDivs;
+
+        let divTax = 0;
+        if (!isIP && withDividends && preDivProfit > 0) {
+            if (preDivProfit <= 2400000) divTax = preDivProfit * 0.13;
+            else divTax = 312000 + (preDivProfit - 2400000) * 0.15;
+            divTax = Math.round(divTax); // T03: Округляем НДФЛ с дивидендов
+        }
+
+        return {
+            sysType: sysType,
+            isIncomeOnly: isIncomeOnly,
+            income: yearlyInc,
+            expenses: yearlyExp + yearlyGrossZp,
+            fotTaxes: yearlyFotTaxes,
+            nds: yearlyNds,
+            tax: mainTax,
+            ipVznosy: totalIpVznosyForDeduction,
+            dividendsTax: divTax,
+            totalTaxes: totalTaxesBeforeDivs + divTax,
+            profit: Math.round(preDivProfit - divTax)
+        };
+    }
+
+    function renderBlock(elId, data, chartPrefix) {
+        let html = '<div class="flex-grow space-y-3">'; 
+        
+        html += `<div class="flex justify-between items-start pb-2 border-b border-[var(--glass-border)]"><span class="opacity-80 pr-4 font-heading">Выручка:</span> <span class="whitespace-nowrap text-white">${fmt.format(data.income)} ₽</span></div>`;
+        
+        // R10: Всегда показываем расходы
+        html += `<div class="flex justify-between items-start pb-2 border-b border-[var(--glass-border)]"><span class="opacity-80 pr-4 font-heading">Расходы + ФОТ:</span> <span class="whitespace-nowrap text-white">${fmt.format(data.expenses)} ₽</span></div>`;
+        html += `<div class="flex justify-between items-start pb-2 border-b border-[var(--glass-border)]"><span class="opacity-80 pr-4 font-heading text-left">Налоги с ФОТ:</span> <span class="whitespace-nowrap text-white text-right">${fmt.format(data.fotTaxes)} ₽</span></div>`;
+        
+        if (data.ipVznosy > 0) {
+            html += `<div class="flex justify-between items-start pb-2 border-b border-[var(--glass-border)]"><span class="opacity-80 pr-4 font-heading text-left">Страховые взносы (за ИП + 1% свыше 300к):</span> <span class="whitespace-nowrap text-white text-right">${fmt.format(data.ipVznosy)} ₽</span></div>`;
+        }
+
+        if (data.nds > 0) {
+            // R11: Корректная подпись для ОСНО
+            let ndsLabel = data.sysType === 'osno' ? 'НДС 22%:' : 'НДС 5% (с превышения 20млн):';
+            html += `<div class="flex justify-between items-start pb-2 border-b border-[var(--glass-border)]"><span class="opacity-80 pr-4 font-heading text-left">${ndsLabel}</span> <span class="whitespace-nowrap text-white text-right">${fmt.format(data.nds)} ₽</span></div>`;
+        } else {
+            html += `<div class="flex justify-between items-start pb-2 border-b border-[var(--glass-border)]"><span class="opacity-80 pr-4 font-heading">НДС:</span> <span class="whitespace-nowrap text-white text-right">0 ₽</span></div>`;
+        }
+        
+        html += `<div class="flex justify-between items-start pb-2 border-b border-[var(--glass-border)]"><span class="opacity-80 pr-4 font-heading">Налог по СНО:</span> <span class="whitespace-nowrap text-white text-right">${fmt.format(data.tax)} ₽</span></div>`;
+        
+        if (data.dividendsTax > 0) {
+            html += `<div class="flex justify-between items-start pb-2 border-b border-[var(--glass-border)]"><span class="opacity-80 pr-4 font-heading text-left">НДФЛ на дивиденды:</span> <span class="whitespace-nowrap text-white text-right">${fmt.format(data.dividendsTax)} ₽</span></div>`;
+        }
+        html += '</div>'; // close flex-grow
+
+        // Блок прибыли и графиков (mt-auto прижимает всё это строго к низу)
+        html += '<div class="mt-auto">';
+        html += `<div class="pt-4 border-t border-[var(--glass-border)] flex justify-between items-center font-bold text-neon"><span class="font-heading">Чистая прибыль:</span> <span class="whitespace-nowrap text-lg">${fmt.format(data.profit)} ₽</span></div>`;
+        
+        if (chartPrefix) {
+            html += `
+            <div class="mt-4 pt-4 border-t border-gray-700/50">
+                <div class="flex justify-center gap-4 text-xs font-heading mb-3 opacity-80">
+                    <div class="flex items-center"><div class="w-3 h-3 rounded-full bg-[#00f3ff] mr-2"></div> Прибыль</div>
+                    <div class="flex items-center"><div class="w-3 h-3 rounded-full bg-[#ffffff] mr-2"></div> Расходы</div>
+                    <div class="flex items-center"><div class="w-3 h-3 rounded-full bg-[#3a86ff] mr-2"></div> Налоги</div>
+                </div>
+                <div class="flex justify-center">
+                    <svg viewBox="0 0 100 100" class="w-32 h-32 transform -rotate-90">
+                        <circle cx="50" cy="50" r="40" fill="none" stroke="rgba(255,255,255,0.05)" stroke-width="12"></circle>
+                        <circle id="${chartPrefix}_tax" cx="50" cy="50" r="40" fill="none" stroke="var(--chart-tax)" stroke-width="12" stroke-dasharray="0 251.2" class="chart-circle"></circle>
+                        <circle id="${chartPrefix}_exp" cx="50" cy="50" r="40" fill="none" stroke="var(--chart-exp)" stroke-width="12" stroke-dasharray="0 251.2" class="chart-circle"></circle>
+                        <circle id="${chartPrefix}_prof" cx="50" cy="50" r="40" fill="none" stroke="var(--chart-prof)" stroke-width="12" stroke-dasharray="0 251.2" class="chart-circle"></circle>
+                    </svg>
+                </div>
+            </div>`;
+        }
+        html += '</div>'; // close mt-auto
+
+        document.getElementById(elId).innerHTML = html;
+
+        if (chartPrefix) {
+            setTimeout(() => {
+                let elTax = document.getElementById(chartPrefix + '_tax');
+                let elExp = document.getElementById(chartPrefix + '_exp');
+                let elProf = document.getElementById(chartPrefix + '_prof');
+                
+                if (elTax && elExp && elProf) {
+                    const totalVolume = Math.max(data.income, 1);
+                    let taxAmount = data.totalTaxes;
+                    let expAmount = data.expenses; 
+                    let profAmount = Math.max(data.profit, 0);
+
+                    let pTax = (taxAmount / totalVolume) * 100;
+                    let pExp = (expAmount / totalVolume) * 100;
+                    let pProf = (profAmount / totalVolume) * 100;
+                    
+                    const sum = pTax + pExp + pProf;
+                    if (sum > 100) {
+                        pTax = (pTax / sum) * 100;
+                        pExp = (pExp / sum) * 100;
+                        pProf = (pProf / sum) * 100;
+                    }
+
+                    const circ = 2 * Math.PI * 40;
+                    const taxVal = (pTax / 100) * circ;
+                    const expVal = (pExp / 100) * circ;
+                    const profVal = (pProf / 100) * circ;
+
+                    elTax.style.strokeDasharray = `${taxVal} ${circ}`;
+                    elTax.style.strokeDashoffset = `0`;
+                    
+                    elExp.style.strokeDasharray = `${expVal} ${circ}`;
+                    elExp.style.strokeDashoffset = `-${taxVal}`;
+                    
+                    elProf.style.strokeDasharray = `${profVal} ${circ}`;
+                    elProf.style.strokeDashoffset = `-${taxVal + expVal}`;
+                }
+            }, 50);
+        }
+    }
+
+    function calculate() {
+        let inc = getVal('income');
+        let ipSharePct = parseInt(document.getElementById('ipShare').value);
+        let oooSharePct = 100 - ipSharePct;
+        
+        let ipExp = getVal('ip_exp'); let ipFot = getVal('ip_fot');
+        let oooExp = getVal('ooo_exp'); let oooFot = getVal('ooo_fot');
+        
+        let sIp = document.getElementById('sys_ip').value;
+        let sO1 = document.getElementById('sys_ooo_1').value;
+        let sO2 = document.getElementById('sys_ooo_2').value;
+        let withDivs = document.getElementById('calcDividends').checked;
+
+        let ip1Inc = (inc * 12) * (ipSharePct / 100);
+        let ooo1Inc = (inc * 12) * (oooSharePct / 100);
+
+        let resIp1 = calcEntity(ip1Inc, ipExp * 12, ipFot * 12, sIp, true, false);
+        let resOoo1 = calcEntity(ooo1Inc, oooExp * 12, oooFot * 12, sO1, false, withDivs);
+        
+        let totalExp = (ipExp + oooExp) * 12;
+        let totalFot = (ipFot + oooFot) * 12;
+        let resOoo2 = calcEntity(inc * 12, totalExp, totalFot, sO2, false, withDivs);
+
+        renderBlock('ip_results', resIp1, 'ip1');
+        renderBlock('ooo_results', resOoo1, 'ooo1');
+        renderBlock('ooo2_results', resOoo2, 'ooo2');
+
+        let totalProf1 = resIp1.profit + resOoo1.profit;
+        let totalProf2 = resOoo2.profit;
+
+        document.getElementById('v1_total_profit').innerText = fmt.format(totalProf1) + ' ₽ / год';
+        document.getElementById('v2_total_profit').innerText = fmt.format(totalProf2) + ' ₽ / год';
+
+        let resAusnIp1 = calcEntity(ip1Inc, ipExp * 12, ipFot * 12, 'ausn8', true, false);
+        let resAusnOoo1 = calcEntity(ooo1Inc, oooExp * 12, oooFot * 12, 'ausn20', false, withDivs);
+        let resAusnOoo2 = calcEntity(inc * 12, totalExp, totalFot, 'ausn20', false, withDivs);
+
+        renderBlock('ausn_ip_results', resAusnIp1, null);
+        renderBlock('ausn_ooo_results', resAusnOoo1, null);
+        renderBlock('ausn_ooo2_results', resAusnOoo2, null);
+
+        document.getElementById('ausn_v1_total_profit').innerText = fmt.format(resAusnIp1.profit + resAusnOoo1.profit) + ' ₽ / год';
+        document.getElementById('ausn_v2_total_profit').innerText = fmt.format(resAusnOoo2.profit) + ' ₽ / год';
+
+        let bannerText = '';
+        let diff = Math.abs(totalProf1 - totalProf2);
+        let isV1Better = totalProf1 > totalProf2;
+
+        if (totalProf1 === totalProf2) {
+            bannerText = `<p class="opacity-70 mt-2">Обе модели приносят одинаковую прибыль.</p>`;
+        } else {
+            bannerText = `
+                <div class="text-xl md:text-2xl font-heading text-neon mt-2 mb-4">
+                    ${isV1Better ? `Модель 1 (Распределение)` : `Модель 2 (100% ООО)`} выгоднее на ${fmt.format(diff)} ₽ в год
+                </div>
+                <div class="text-left max-w-3xl mx-auto bg-[rgba(0,0,0,0.2)] p-6 rounded-xl border border-[var(--glass-border)]">
+                    <p class="font-bold text-white mb-4 font-heading text-lg">Главные драйверы эффективности:</p>
+                    <ul class="text-sm space-y-4 opacity-90">
+            `;
+            
+            if (isV1Better) {
+                bannerText += `
+                    <li class="flex"><svg class="w-6 h-6 text-neon mr-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg> 
+                    <span><strong class="text-white text-base">Экономия на дивидендах:</strong> Прибыль ИП находится в прямом доступе владельца без удержания прогрессивного НДФЛ (13-15%).</span></li>
+                    <li class="flex"><svg class="w-6 h-6 text-neon mr-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg> 
+                    <span><strong class="text-white text-base">Сплит лимитов и налогов:</strong> Разделение потоков позволяет применять оптимальные СНО для разных типов затрат (ИП без расходов на Доходах, ООО с расходами на Доходы-Расходы).</span></li>
+                `;
+            } else {
+                bannerText += `
+                    <li class="flex"><svg class="w-6 h-6 text-neon mr-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg> 
+                    <span><strong class="text-white text-base">Снижение фикс. издержек:</strong> Исключение ИП позволяет не платить обязательные взносы за себя (около 60 тыс + 1%), что дает чистую экономию.</span></li>
+                    <li class="flex"><svg class="w-6 h-6 text-neon mr-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg> 
+                    <span><strong class="text-white text-base">Консолидация базы:</strong> Единая налоговая база для ООО радикально снижает эффективную ставку, что перекрывает потери на выплате дивидендов.</span></li>
+                `;
+            }
+            bannerText += `</ul></div>`;
+        }
+        document.getElementById('optimal_text').innerHTML = bannerText;
+        
+        window.lastCalcData = {
+            ipShare: ipSharePct, oooShare: oooSharePct,
+            sysIp: sIp, sysOoo: sO1, sysOoo2: sO2,
+            ip1: resIp1, ooo1: resOoo1, ooo2: resOoo2,
+            ausnIp1: resAusnIp1, ausnOoo1: resAusnOoo1, ausnOoo2: resAusnOoo2,
+            isV1Better: isV1Better, diff: diff
+        };
+    }
+
+    function downloadExcel() {
+        if (!window.lastCalcData) return;
+        const d = window.lastCalcData;
+        
+        let table = `
+        <html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">
+        <head><meta charset="utf-8">
+        <style>
+            table { border-collapse: collapse; width: 100%; font-family: sans-serif; }
+            th, td { border: 1px solid #302b63; padding: 10px; }
+            th { background-color: #070720; color: #00f3ff; text-align: center; }
+            .row-header { font-weight: bold; background-color: #eef2f5; text-align: left; }
+            .num { text-align: right; }
+            .total-row { background-color: #00f3ff; color: #070720; font-weight: bold; font-size: 16px; text-align: center; }
+            .title { font-size: 20px; font-weight: bold; margin-bottom: 10px; color: #070720; }
+        </style>
+        </head>
+        <body>
+            <div class="title">Налоговый калькулятор бизнес-моделей (2027 год)</div>
+            <br>
+            <table>
+                <tr>
+                    <th>Параметр</th>
+                    <th>Модель 1 (ИП ${d.ipShare}%)</th>
+                    <th>Модель 1 (ООО ${d.oooShare}%)</th>
+                    <th>Модель 2 (100% ООО)</th>
+                </tr>
+                <tr><td class="row-header">Система налогообложения</td><td class="num">${d.sysIp}</td><td class="num">${d.sysOoo}</td><td class="num">${d.sysOoo2}</td></tr>
+                <tr><td class="row-header">Выручка (год)</td><td class="num">${fmt.format(d.ip1.income)} ₽</td><td class="num">${fmt.format(d.ooo1.income)} ₽</td><td class="num">${fmt.format(d.ooo2.income)} ₽</td></tr>
+                <tr><td class="row-header">Расходы + ФОТ (год)</td><td class="num">${fmt.format(d.ip1.expenses)} ₽</td><td class="num">${fmt.format(d.ooo1.expenses)} ₽</td><td class="num">${fmt.format(d.ooo2.expenses)} ₽</td></tr>
+                <tr><td class="row-header">Налоги с ФОТ</td><td class="num">${fmt.format(d.ip1.fotTaxes)} ₽</td><td class="num">${fmt.format(d.ooo1.fotTaxes)} ₽</td><td class="num">${fmt.format(d.ooo2.fotTaxes)} ₽</td></tr>
+                <tr><td class="row-header">Взносы ИП за себя</td><td class="num">${fmt.format(d.ip1.ipVznosy)} ₽</td><td class="num">0 ₽</td><td class="num">0 ₽</td></tr>
+                <tr><td class="row-header">НДС</td><td class="num">${fmt.format(d.ip1.nds)} ₽</td><td class="num">${fmt.format(d.ooo1.nds)} ₽</td><td class="num">${fmt.format(d.ooo2.nds)} ₽</td></tr>
+                <tr><td class="row-header">Налог по СНО</td><td class="num">${fmt.format(d.ip1.tax)} ₽</td><td class="num">${fmt.format(d.ooo1.tax)} ₽</td><td class="num">${fmt.format(d.ooo2.tax)} ₽</td></tr>
+                <tr><td class="row-header">НДФЛ на дивиденды</td><td class="num">0 ₽</td><td class="num">${fmt.format(d.ooo1.dividendsTax)} ₽</td><td class="num">${fmt.format(d.ooo2.dividendsTax)} ₽</td></tr>
+                <tr><td class="row-header" style="background-color: #d1ecf1;">ЧИСТАЯ ПРИБЫЛЬ (юр. лицо)</td><td class="num" style="font-weight:bold;">${fmt.format(d.ip1.profit)} ₽</td><td class="num" style="font-weight:bold;">${fmt.format(d.ooo1.profit)} ₽</td><td class="num" style="font-weight:bold;">${fmt.format(d.ooo2.profit)} ₽</td></tr>
+                
+                <tr class="total-row">
+                    <td>ИТОГОВАЯ ЧИСТАЯ ПРИБЫЛЬ (МОДЕЛЬ)</td>
+                    <td colspan="2">${fmt.format(d.ip1.profit + d.ooo1.profit)} ₽</td>
+                    <td>${fmt.format(d.ooo2.profit)} ₽</td>
+                </tr>
+            </table>
+
+            <br><br>
+            <div class="title">Альтернативный сценарий: АУСН</div>
+            <table>
+                <tr>
+                    <th>Параметр (АУСН)</th>
+                    <th>Модель 1 (ИП ${d.ipShare}%)</th>
+                    <th>Модель 1 (ООО ${d.oooShare}%)</th>
+                    <th>Модель 2 (100% ООО)</th>
+                </tr>
+                <tr><td class="row-header">Выручка (год)</td><td class="num">${fmt.format(d.ausnIp1.income)} ₽</td><td class="num">${fmt.format(d.ausnOoo1.income)} ₽</td><td class="num">${fmt.format(d.ausnOoo2.income)} ₽</td></tr>
+                <tr><td class="row-header">Расходы + ФОТ (год)</td><td class="num">${fmt.format(d.ausnIp1.expenses)} ₽</td><td class="num">${fmt.format(d.ausnOoo1.expenses)} ₽</td><td class="num">${fmt.format(d.ausnOoo2.expenses)} ₽</td></tr>
+                <tr><td class="row-header">Травматизм / Взносы</td><td class="num">${fmt.format(d.ausnIp1.fotTaxes)} ₽</td><td class="num">${fmt.format(d.ausnOoo1.fotTaxes)} ₽</td><td class="num">${fmt.format(d.ausnOoo2.fotTaxes)} ₽</td></tr>
+                <tr><td class="row-header">Налог АУСН</td><td class="num">${fmt.format(d.ausnIp1.tax)} ₽</td><td class="num">${fmt.format(d.ausnOoo1.tax)} ₽</td><td class="num">${fmt.format(d.ausnOoo2.tax)} ₽</td></tr>
+                <tr><td class="row-header">НДФЛ на дивиденды</td><td class="num">0 ₽</td><td class="num">${fmt.format(d.ausnOoo1.dividendsTax)} ₽</td><td class="num">${fmt.format(d.ausnOoo2.dividendsTax)} ₽</td></tr>
+                <tr class="total-row">
+                    <td>ИТОГОВАЯ ЧИСТАЯ ПРИБЫЛЬ (АУСН)</td>
+                    <td colspan="2">${fmt.format(d.ausnIp1.profit + d.ausnOoo1.profit)} ₽</td>
+                    <td>${fmt.format(d.ausnOoo2.profit)} ₽</td>
+                </tr>
+            </table>
+            
+            <br><br>
+            <div class="title">Вывод:</div>
+            <p style="font-size: 16px;">
+                ${d.isV1Better ? `Модель 1 (Распределение)` : `Модель 2 (100% ООО)`} выгоднее на <b>${fmt.format(d.diff)} ₽</b> в год.
+            </p>
+        </body>
+        </html>
+        `;
+
+        // Универсальный экспорт HTML как .xls (открывается в Excel с сохранением стилей)
+        let blob = new Blob([table], { type: 'application/vnd.ms-excel' });
+        let link = document.createElement("a");
+        link.href = URL.createObjectURL(blob);
+        link.download = "Расчет_налогов_2027.xls";
+        link.click();
+    }
+
+    updateShareLabels();
+    calculate();
+</script>
+</body>
+</html>
